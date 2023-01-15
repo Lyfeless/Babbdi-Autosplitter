@@ -6,21 +6,17 @@ startup {
     vars.Helper.GameName = "Babbdi";
     vars.Helper.LoadSceneManager = true;
 
-    // Initialize scene tracker
-    vars.scene = "";
-    vars.scene_old = "";
-
     // Setup achievement data
     vars.achievements = new[] {
         // Commenting out some achivements that have specific uses that shouldn't be turned off
         //      Internal Name       Display Name
       //new[] { "escapeBabbdi",     "Melancholic Departure" },
+      //new[] { "gameUnder",        "Way of the Rusher" },
         new[] { "wayClimber",       "Way of the Climber" },
         new[] { "trainDeath",       "Flat Face" },
         new[] { "allSecrets",       "Secrets Master" },
         new[] { "interactEveryone", "Social Quest" },
         new[] { "playDog",          "Doggo Friendly" },
-      //new[] { "gameUnder",        "Way of the Rusher" },
         new[] { "impressGirl",      "Way of the Seducer" },
         new[] { "bikeAir",          "Way of the Biker" },
         new[] { "ticket",           "Babbdi Quest" },
@@ -66,9 +62,16 @@ startup {
 }
 
 init {
+    // Initialize scene tracker
+    vars.scene = "";
+    vars.scene_old = "";
+
+    // Warning system for inaccurate realtime
+    vars.rtaCheck = false;
+
     vars.Helper.TryLoad = (Func<dynamic, bool>)(mono => {
         var gameManager = mono["GameManager"];
-        var playerController = mono["FirstPersonController"];
+        //var playerController = mono["FirstPersonController"];
 
         // IGT
         vars.Helper["gameTime"] = gameManager.Make<float>("Instance", "gameTime");
@@ -114,6 +117,7 @@ init {
 
         return true;
     });
+
 }
 
 update {
@@ -122,10 +126,21 @@ update {
     // Need to investigate what's wrong and how to get around it
     vars.scene_old = vars.scene;
     vars.scene = vars.Helper.Scenes.Active.Name;
+
+    // Check on run end if rta is innacruate
+    if(vars.rtaCheck && timer.CurrentPhase == TimerPhase.Ended) {
+        MessageBox.Show("Real time tracking was started late and may not be accurate. All values using ingame time will be correct, including the final run time, but real time will need to be retimed by a loaderboard moderator.", "Real Time Desync Warning", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+        vars.rtaCheck = false;
+    };
 }
 
 start {
-    return (vars.scene == "Scene_AAA" && vars.scene_old != "Scene_AAA");
+    if(vars.scene == "Scene_AAA" && vars.scene_old != "Scene_AAA") {
+        vars.rtaCheck = (current.gameTime != 0);
+        return true;
+    }
+
+    return false;
 }
 
 reset {
