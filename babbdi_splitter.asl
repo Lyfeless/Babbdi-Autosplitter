@@ -46,6 +46,9 @@ startup {
     settings.Add("train", true, "Train Exit Splitting");
     settings.SetToolTip("train", "Split when boarding the train to leave Babbdi");
 
+    settings.Add("menu", false, "Quit to Menu Splitting");
+    settings.SetToolTip("menu", "Split when quitting to menu");
+
     settings.Add("secrets", true, "Secret Item Splitting");
     settings.SetToolTip("secrets", "Split on picking up a secret item");
 
@@ -66,9 +69,6 @@ init {
     vars.scene = "";
     vars.scene_old = "";
 
-    // Warning system for inaccurate realtime
-    vars.rtaCheck = false;
-
     vars.Helper.TryLoad = (Func<dynamic, bool>)(mono => {
         var gameManager = mono["GameManager"];
         //var playerController = mono["FirstPersonController"];
@@ -80,7 +80,7 @@ init {
         vars.Helper["secretsFound"] = gameManager.Make<int>("Instance", "secretsFound");
         vars.Helper["npcInteractedWith"] = gameManager.Make<int>("Instance", "npcInteractedWith");
 
-        // Acheivements
+        // Achievements
         vars.Helper["wayClimber"] = gameManager.Make<bool>("Instance", "wayClimber");
         vars.Helper["trainDeath"] = gameManager.Make<bool>("Instance", "trainDeath");
         vars.Helper["allSecrets"] = gameManager.Make<bool>("Instance", "allSecrets");
@@ -126,29 +126,24 @@ update {
     // Need to investigate what's wrong and how to get around it
     vars.scene_old = vars.scene;
     vars.scene = vars.Helper.Scenes.Active.Name;
-
-    // Check on run end if rta is innacruate
-    if(vars.rtaCheck && timer.CurrentPhase == TimerPhase.Ended) {
-        MessageBox.Show("Real time tracking was started late and may not be accurate. All values using ingame time will be correct, including the final run time, but real time will need to be retimed by a loaderboard moderator.", "Real Time Desync Warning", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-        vars.rtaCheck = false;
-    };
 }
 
 start {
-    if(vars.scene == "Scene_AAA" && vars.scene_old != "Scene_AAA") {
-        vars.rtaCheck = (current.gameTime != 0);
-        return true;
-    }
-
-    return false;
+    // This will be innacurate when the game first launches, as the game manager doesn't load in until the map is actually loaded for the fist time.
+    // Realistically all this will do is fail to start the timer, so it may not be the worst thing in the world?
+    return (vars.scene == "Scene_AAA" && vars.scene_old != "Scene_AAA" && current.gameTime == 0);
 }
 
 reset {
-    return (vars.scene == "MainMenu" && vars.scene_old != "MainMenu");
+    return current.gameTime < old.gameTime;
 }
 
 split {
     if(settings["train"] && !old.escapeBabbdi && current.escapeBabbdi) {
+        return true;
+    }
+
+    if(settings["menu"] && vars.scene != "Scene_AAA" && vars.scene_old == "Scene_AAA") {
         return true;
     }
 
